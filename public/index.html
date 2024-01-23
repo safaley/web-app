@@ -72,6 +72,7 @@
       }
 
       function loadTasks() {
+        // alert("Button clicked!");
         fetch("http://localhost:3000/tasks")
           .then((response) => response.json())
           .then((tasks) => {
@@ -79,8 +80,8 @@
             taskList.innerHTML = "";
             tasks.forEach((task) => {
               const li = document.createElement("li");
-              li.innerHTML = `<strong>${task.title}</strong>: ${task.description} 
-                                        <button onclick="editTask(${task.id})">Edit</button> 
+              li.innerHTML = `<strong>${task.title}</strong>: ${task.description}
+                                        <button onclick="editTask(${task.id})">Edit</button>
                                         <button onclick="deleteTask(${task.id})">Delete</button>`;
               taskList.appendChild(li);
             });
@@ -88,6 +89,7 @@
       }
 
       function addTask() {
+        // alert("Button clicked!");
         const title = document.getElementById("title").value;
         const description = document.getElementById("description").value;
 
@@ -100,28 +102,33 @@
             title: title,
             description: description,
           }),
-        }).then((response) => {
-          if (response.status === 201) {
-            document.getElementById("title").value = "";
-            document.getElementById("description").value = "";
+        })
+          .then((response) => response.json())
+          .then((result) => {
             loadTasks();
-          }
-        });
+          })
+          .catch((error) => {
+            console.error("Error adding task:", error);
+          });
       }
 
-      function editTask(taskId) {
-        // Implement edit functionality (optional)
-        console.log("Edit Task:", taskId);
-      }
+      // function editTask(taskId) {
+      //   // Implement edit functionality (optional)
+      //   console.log("Edit Task:", taskId);
+      // }
 
       function deleteTask(taskId) {
         fetch(`http://localhost:3000/tasks/${taskId}`, {
           method: "DELETE",
-        }).then((response) => {
-          if (response.status === 200) {
+        })
+          .then((response) => response.json())
+          .then((result) => {
+            console.log(result);
             loadTasks();
-          }
-        });
+          })
+          .catch((error) => {
+            console.error("Error deleting task:", error);
+          });
       }
     </script>
   </body>

@@ -1,40 +1,34 @@
 const express = require("express");
-const mysql = require("mysql");
 const cors = require("cors");
 const path = require("path");
-
+const fs = require("fs");
 const app = express();
 const port = 3000;
+const sql = require("mssql");
 require("dotenv").config();
 
 app.use(cors());
 
-// MySQL connection
-const db = mysql.createConnection({
-  host: process.env.HOST,
-  user: process.env.USERNAME,
-  password: process.env.PASSWORD,
-  database: process.env.DATABASE,
-  port: process.env.PORT,
-});
+const HOST = "webappserverdb.database.windows.net";
+const USERNAME = "azureuser";
+const PASSWORD = "s@Fal102938";
+const DATABASE = "web";
 
-// Connect to MySQL
-db.connect((err) => {
-  if (err) {
-    console.error("Error connecting to MySQL: ", err);
-    throw err;
-  }
-  console.log("Connected to MySQL database");
-});
+const config = {
+  user: USERNAME,
+  password: PASSWORD,
+  server: HOST,
+  database: DATABASE,
+  pool: {
+    max: 10, // Maximum number of connections in the pool
+    min: 0, // Minimum number of connections in the pool
+    idleTimeoutMillis: 30000, // How long a connection is allowed to be idle (in milliseconds)
+  },
+};
 
-// Create 'tasks' table if not exists
-db.query(`
-  CREATE TABLE IF NOT EXISTS tasks (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(255) NOT NULL,
-    description TEXT
-  )
-`);
+// Use connection pool to manage database connections
+const pool = new sql.ConnectionPool(config);
+const poolConnect = pool.connect();
 
 // Middleware to parse JSON
 app.use(express.json());
@@ -42,66 +36,109 @@ app.use(express.json());
 // Serve static files (including the HTML file)
 app.use(express.static(path.join(__dirname, "public")));
 
+// Create 'tasks' table if not exists
+async function createTable() {
+  try {
+    // Wait for the connection pool to be established
+    await poolConnect;
+
+    // Execute the query to create the 'tasks' table if it doesn't exist
+    const result = await pool.request().query(`
+      IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'tasks')
+      BEGIN
+          CREATE TABLE tasks (
+              id INT IDENTITY(1,1) PRIMARY KEY,
+              title NVARCHAR(255) NOT NULL,
+              description NVARCHAR(MAX)
+          );
+      END;
+    `);
+
+    console.log("Table creation result:", result);
+  } catch (err) {
+    console.error("Error creating table:", err);
+  }
+}
+
+// Initialize connection pool and create table
+createTable();
+
 // CRUD operations
 
 // Get all tasks
-app.get("/tasks", (req, res) => {
-  db.query("SELECT * FROM tasks", (err, results) => {
-    if (err) {
-      console.error("Error executing MySQL query: ", err);
-      res.status(500).json({ error: "Internal Server Error" });
-      return;
-    }
-    res.json(results);
-  });
+app.get("/tasks", async (req, res) => {
+  try {
+    // Wait for the connection pool to be established
+    await poolConnect;
+
+    // Execute the query to get all tasks
+    const result = await pool.request().query("SELECT * FROM tasks");
+
+    // Send the results as JSON
+    res.json(result.recordset);
+  } catch (err) {
+    console.error("Error executing SQL query:", err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
 });
 
 // Add a new task
-app.post("/tasks", (req, res) => {
+app.post("/tasks", async (req, res) => {
   const { title, description } = req.body;
-  db.query(
-    "INSERT INTO tasks (title, description) VALUES (?, ?)",
-    [title, description],
-    (err) => {
-      if (err) {
-        console.error("Error executing MySQL query: ", err);
-        res.status(500).json({ error: "Internal Server Error" });
-        return;
-      }
-      res.status(201).json({ message: "Task added successfully" });
-    }
-  );
-});
 
-// Update a task
-app.put("/tasks/:taskId", (req, res) => {
-  const { title, description } = req.body;
-  const taskId = req.params.taskId;
-  db.query(
-    "UPDATE tasks SET title = ?, description = ? WHERE id = ?",
-    [title, description, taskId],
-    (err) => {
-      if (err) {
-        console.error("Error executing MySQL query: ", err);
-        res.status(500).json({ error: "Internal Server Error" });
-        return;
-      }
-      res.json({ message: "Task updated successfully" });
+  try {
+    // Wait for the connection pool to be established
+    await poolConnect;
+
+    // Execute the insert query
+    const result = await pool
+      .request()
+      .input("title", sql.NVarChar, title)
+      .input("description", sql.NVarChar, description)
+      .query(
+        "INSERT INTO tasks (title, description) VALUES (@title, @description)"
+      );
+
+    // Check if any rows were affected
+    if (result.rowsAffected[0] === 0) {
+      // No rows were inserted
+      res.status(500).json({ error: "Task not created" });
+    } else {
+      // Rows were inserted successfully
+      res.status(201).json({ message: "Task created successfully" });
     }
-  );
+  } catch (err) {
+    console.error("Error executing SQL query:", err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
 });
 
 // Delete a task
-app.delete("/tasks/:taskId", (req, res) => {
+app.delete("/tasks/:taskId", async (req, res) => {
   const taskId = req.params.taskId;
-  db.query("DELETE FROM tasks WHERE id = ?", [taskId], (err) => {
-    if (err) {
-      console.error("Error executing MySQL query: ", err);
-      res.status(500).json({ error: "Internal Server Error" });
-      return;
+
+  try {
+    // Wait for the connection pool to be established
+    await poolConnect;
+
+    // Execute the delete query
+    const result = await pool
+      .request()
+      .input("taskId", sql.Int, taskId)
+      .query("DELETE FROM tasks WHERE id = @taskId");
+
+    // Check if any rows were affected
+    if (result.rowsAffected[0] === 0) {
+      // No rows were deleted (task with taskId not found)
+      res.status(404).json({ error: "Task not found" });
+    } else {
+      // Rows were deleted successfully
+      res.json({ message: "Task deleted successfully" });
     }
-    res.json({ message: "Task deleted successfully" });
-  });
+  } catch (err) {
+    console.error("Error executing SQL query:", err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
 });
 
 // Start the server
