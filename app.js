@@ -86,6 +86,7 @@ app.get("/tasks", async (req, res) => {
 app.post("/tasks", async (req, res) => {
   const { title, description } = req.body;
 
+  console.log("task posted from app.js");
   try {
     // Wait for the connection pool to be established
     await poolConnect;
