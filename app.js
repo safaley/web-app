@@ -34,7 +34,7 @@ const poolConnect = pool.connect();
 app.use(express.json());
 
 // Serve static files (including the HTML file)
-app.use(express.static(path.join(__dirname, "html")));
+app.use(express.static(path.join(__dirname, "public")));
 
 // Create 'tasks' table if not exists
 async function createTable() {
