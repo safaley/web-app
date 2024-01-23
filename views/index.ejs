@@ -1,3 +1,5 @@
+<!-- views/index.ejs -->
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -5,52 +7,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Task Manager</title>
     <style>
-      body {
-        font-family: Arial, sans-serif;
-        margin: 20px;
-      }
-
-      h1 {
-        color: #333;
-      }
-
-      #taskList {
-        list-style-type: none;
-        padding: 0;
-      }
-
-      li {
-        margin-bottom: 10px;
-        border: 1px solid #ddd;
-        padding: 10px;
-        background-color: #f9f9f9;
-      }
-
-      form {
-        margin-top: 20px;
-      }
-
-      button {
-        background-color: #4caf50;
-        color: white;
-        padding: 10px;
-        cursor: pointer;
-      }
-
-      button:hover {
-        background-color: #45a049;
-      }
-
-      textarea {
-        width: 100%;
-        padding: 5px;
-      }
+      /* Your existing styles here */
     </style>
   </head>
   <body>
     <h1>Task Manager</h1>
 
-    <ul id="taskList"></ul>
+    <ul id="taskList">
+      <% tasks.forEach(task => { %>
+      <li>
+        <strong><%= task.title %></strong>: <%= task.description %>
+        <button onclick="editTask('<%= task.id %>')">Edit</button>
+        <button onclick="deleteTask('<%= task.id %>')">Delete</button>
+      </li>
+      <% }); %>
+    </ul>
 
     <form id="taskForm">
       <label for="title">Title:</label>
@@ -62,6 +33,7 @@
       <button type="button" onclick="addTask()">Add Task</button>
     </form>
 
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script>
       document.addEventListener("DOMContentLoaded", function () {
         loadTasksOnPageLoad();
@@ -71,61 +43,47 @@
         loadTasks();
       }
 
-      function loadTasks() {
-        // alert("Button clicked!");
+      async function loadTasks() {
+        try {
+          const response = await axios.get("/tasks");
+          const tasks = response.data;
 
-        fetch("http://localhost:3000/tasks")
-          .then((response) => response.json())
-          .then((tasks) => {
-            const taskList = document.getElementById("taskList");
-            taskList.innerHTML = "";
-            tasks.forEach((task) => {
-              const li = document.createElement("li");
-              li.innerHTML = `<strong>${task.title}</strong>: ${task.description}
-                                        <button onclick="editTask(${task.id})">Edit</button>
-                                        <button onclick="deleteTask(${task.id})">Delete</button>`;
-              taskList.appendChild(li);
-            });
+          const taskList = document.getElementById("taskList");
+          taskList.innerHTML = "";
+
+          tasks.forEach((task) => {
+            const li = document.createElement("li");
+            li.innerHTML = `<strong>${task.title}</strong>: ${task.description}
+                              <button onclick="editTask(${task.id})">Edit</button>
+                              <button onclick="deleteTask(${task.id})">Delete</button>`;
+            taskList.appendChild(li);
           });
+        } catch (error) {
+          console.error("Error fetching tasks:", error);
+        }
       }
 
-      function addTask() {
-        // alert("Button clicked!");
-        // alert("Loaded");
+      async function addTask() {
         const title = document.getElementById("title").value;
         const description = document.getElementById("description").value;
-        alert("Here");
-        fetch("http://localhost:3000/tasks", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
+
+        try {
+          await axios.post("/tasks", {
             title: title,
             description: description,
-          }),
-        })
-          .then((response) => response.json())
-          .then((result) => {
-            loadTasks();
-          })
-          .catch((error) => {
-            console.error("Error adding task:", error);
           });
+
+          loadTasks();
+        } catch (error) {
+          console.error("Error adding task:", error);
+        }
       }
 
-      // function editTask(taskId) {
-      //   // Implement edit functionality (optional)
-      //   console.log("Edit Task:", taskId);
-      // }
-
       function deleteTask(taskId) {
-        fetch(`http://localhost:3000/tasks/${taskId}`, {
-          method: "DELETE",
-        })
-          .then((response) => response.json())
-          .then((result) => {
-            console.log(result);
+        axios
+          .delete(`/tasks/${taskId}`)
+          .then((response) => {
+            console.log(response.data);
             loadTasks();
           })
           .catch((error) => {
