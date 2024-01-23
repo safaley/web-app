@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Task Manager</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+
+      h1 {
+        color: #333;
+      }
+
+      #taskList {
+        list-style-type: none;
+        padding: 0;
+      }
+
+      li {
+        margin-bottom: 10px;
+        border: 1px solid #ddd;
+        padding: 10px;
+        background-color: #f9f9f9;
+      }
+
+      form {
+        margin-top: 20px;
+      }
+
+      button {
+        background-color: #4caf50;
+        color: white;
+        padding: 10px;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background-color: #45a049;
+      }
+
+      textarea {
+        width: 100%;
+        padding: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Task Manager</h1>
+
+    <ul id="taskList"></ul>
+
+    <form id="taskForm">
+      <label for="title">Title:</label>
+      <input type="text" id="title" required />
+
+      <label for="description">Description:</label>
+      <textarea id="description"></textarea>
+
+      <button type="button" onclick="addTask()">Add Task</button>
+    </form>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        loadTasksOnPageLoad();
+      });
+
+      function loadTasksOnPageLoad() {
+        loadTasks();
+      }
+
+      function loadTasks() {
+        fetch("http://localhost:3000/tasks")
+          .then((response) => response.json())
+          .then((tasks) => {
+            const taskList = document.getElementById("taskList");
+            taskList.innerHTML = "";
+            tasks.forEach((task) => {
+              const li = document.createElement("li");
+              li.innerHTML = `<strong>${task.title}</strong>: ${task.description} 
+                                        <button onclick="editTask(${task.id})">Edit</button> 
+                                        <button onclick="deleteTask(${task.id})">Delete</button>`;
+              taskList.appendChild(li);
+            });
+          });
+      }
+
+      function addTask() {
+        const title = document.getElementById("title").value;
+        const description = document.getElementById("description").value;
+
+        fetch("http://localhost:3000/tasks", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            title: title,
+            description: description,
+          }),
+        }).then((response) => {
+          if (response.status === 201) {
+            document.getElementById("title").value = "";
+            document.getElementById("description").value = "";
+            loadTasks();
+          }
+        });
+      }
+
+      function editTask(taskId) {
+        // Implement edit functionality (optional)
+        console.log("Edit Task:", taskId);
+      }
+
+      function deleteTask(taskId) {
+        fetch(`http://localhost:3000/tasks/${taskId}`, {
+          method: "DELETE",
+        }).then((response) => {
+          if (response.status === 200) {
+            loadTasks();
+          }
+        });
+      }
+    </script>
+  </body>
+</html>
