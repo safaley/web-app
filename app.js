@@ -9,6 +9,8 @@ require("dotenv").config();
 
 app.use(cors());
 
+app.set("view engine", "ejs");
+
 const HOST = "webappserverdb.database.windows.net";
 const USERNAME = "azureuser";
 const PASSWORD = "s@Fal102938";
@@ -34,7 +36,7 @@ const poolConnect = pool.connect();
 app.use(express.json());
 
 // Serve static files (including the HTML file)
-app.use(express.static(path.join(__dirname, "public")));
+// app.use(express.static(path.join(__dirname, "public")));
 
 // Create 'tasks' table if not exists
 async function createTable() {
@@ -55,6 +57,9 @@ async function createTable() {
     `);
 
     console.log("Table creation result:", result);
+    app.get("/", (req, res) => {
+      res.render("index"); // index refers to index.ejs
+    });
   } catch (err) {
     console.error("Error creating table:", err);
   }

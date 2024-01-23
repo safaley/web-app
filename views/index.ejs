@@ -74,7 +74,7 @@
       function loadTasks() {
         // alert("Button clicked!");
 
-        fetch("172.210.49.62/tasks")
+        fetch("http://localhost:3000/tasks")
           .then((response) => response.json())
           .then((tasks) => {
             const taskList = document.getElementById("taskList");
@@ -94,8 +94,8 @@
         // alert("Loaded");
         const title = document.getElementById("title").value;
         const description = document.getElementById("description").value;
-        // alert("Here");
-        fetch("http://172.210.49.62/tasks", {
+        alert("Here");
+        fetch("http://localhost:3000/tasks", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -120,7 +120,7 @@
       // }
 
       function deleteTask(taskId) {
-        fetch(`http://172.210.49.62/tasks/${taskId}`, {
+        fetch(`http://localhost:3000/tasks/${taskId}`, {
           method: "DELETE",
         })
           .then((response) => response.json())
